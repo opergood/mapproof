@@ -1,5 +1,5 @@
 {
- "note": "MapProof 외부판을 쓸 수 있는 PC 번호 목록. 외부판에서 [설정] > [PC 등록 정보]로 PC 번호를 봅니다. 여기 'allow'에 그 번호를 넣으면 쓸 수 있고, 빼면 다음에 열 때 막힙니다.",
+ "note": "GeoFix 사용 허가 PC 번호 목록 — allow = 외부판, allow_internal = 내부판(회사 PC), pcs = 외부판 사용 기한. 회사 · 이름 · 연락처는 비공개 요청 저장소에만 둡니다. 'GeoFix 허가 관리'(관리자 PC) 또는 요청에 '승인' 댓글로 고칩니다.",
  "allow": [],
  "allow_internal": [],
  "pcs": {}
