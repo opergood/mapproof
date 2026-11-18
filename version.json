@@ -1,5 +1,5 @@
 {
   "note": "외부판 가장 새 판 번호와 설치 파일 주소. 새 판을 올릴 때 version 과 url 을 바꾸고, 설치 파일을 저장소에 올립니다.",
-  "version": "0.10.40",
+  "version": "0.10.44",
   "url": "https://github.com/opergood/mapproof/raw/main/GeoFix_setup_latest.exe"
 }
