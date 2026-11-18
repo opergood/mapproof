@@ -1,6 +1,8 @@
 {
  "note": "GeoFix 사용 허가 PC 번호 목록 — allow = 외부판, allow_internal = 내부판(회사 PC), pcs = 외부판 사용 기한. 회사 · 이름 · 연락처는 비공개 요청 저장소에만 둡니다. 'GeoFix 허가 관리'(관리자 PC) 또는 요청에 '승인' 댓글로 고칩니다.",
  "allow": [],
- "allow_internal": [],
+ "allow_internal": [
+  "0000-0000-0000-0049"
+ ],
  "pcs": {}
 }
