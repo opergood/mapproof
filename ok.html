@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>GeoFix 사용 요청</title>
+<style>
+  /* GeoFix 허가 관리 — 휴대폰 알림을 누르면 열리는 단추 화면 (v0.10.51 · 사용자: "버튼모양은안돼?")
+     주소 # 뒤에 요청 번호 · 답 주제 · 확인값이 들어 있음 (서버로는 안 감). 단추를 누르면 ntfy 답 주제로 'approve N 확인값' 을 보내고
+     PC 의 허가 관리가 처리 → 결과 알림을 이 화면에도 보여 줌 */
+  :root { --ink:#101828; --sub:#5b6474; --line:#e3e7ee; --bg:#f3f5f8; --card:#ffffff; --ok:#15803d; --ok-d:#116d34; --no:#c62828; --no-d:#a61f1f; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--ink);
+               font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif; -webkit-text-size-adjust:100%; }
+  main { max-width:520px; margin:0 auto; padding:22px 18px 28px; }
+  .app { font-size:15px; color:var(--sub); letter-spacing:.02em; }
+  h1 { margin:6px 0 18px; font-size:30px; line-height:1.2; }
+  h1 .num { color:var(--sub); font-weight:600; margin-left:8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:6px 18px; }
+  .row { display:flex; gap:14px; padding:13px 0; border-bottom:1px solid var(--line); font-size:19px; }
+  .row:last-child { border-bottom:0; }
+  .row b { width:64px; flex:none; color:var(--sub); font-weight:600; }
+  .row span { word-break:break-all; }
+  .btns { display:grid; gap:14px; margin-top:22px; }
+  button { appearance:none; border:0; border-radius:18px; height:92px; font:inherit; font-size:32px; font-weight:700; color:#fff;
+           letter-spacing:.06em; cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.18); }
+  button:focus-visible { outline:4px solid #93c5fd; outline-offset:3px; }
+  .ok { background:var(--ok); } .ok:active { background:var(--ok-d); }
+  .no { background:var(--no); } .no:active { background:var(--no-d); }
+  button:disabled { opacity:.45; cursor:default; }
+  #st { min-height:58px; margin-top:18px; padding:14px 16px; border-radius:14px; font-size:18px; line-height:1.45; display:none; }
+  #st.wait { display:block; background:#eef2f9; color:#1f3a68; }
+  #st.good { display:block; background:#e8f6ec; color:#14532d; }
+  #st.bad { display:block; background:#fdecec; color:#7f1d1d; }
+  .more { display:block; margin-top:22px; text-align:center; font-size:16px; color:var(--sub); }
+  .note { margin-top:10px; font-size:13px; color:var(--sub); text-align:center; line-height:1.5; }
+</style>
+</head>
+<body>
+<main>
+  <div class="app">GeoFix 허가 관리</div>
+  <h1>사용 요청<span class="num" id="no"></span></h1>
+  <div class="card">
+    <div class="row"><b>구분</b><span id="k"></span></div>
+    <div class="row"><b>회사</b><span id="c"></span></div>
+    <div class="row"><b>이름</b><span id="m"></span></div>
+    <div class="row"><b>PC</b><span id="p"></span></div>
+  </div>
+  <div class="btns">
+    <button class="ok" id="bok" type="button">승인</button>
+    <button class="no" id="bno" type="button">거절</button>
+  </div>
+  <div id="st" role="status" aria-live="polite"></div>
+  <a class="more" id="more" href="#">GitHub 에서 자세히 보기</a>
+  <div class="note">누르면 회사 PC 의 허가 관리가 처리합니다.<br>그 PC 가 켜져 있어야 하고, 외부판은 사용 기한 1년으로 승인합니다.</div>
+</main>
+<script>
+(function () {
+  var h = {};
+  location.hash.replace(/^#/, "").split("&").forEach(function (kv) {
+    var i = kv.indexOf("="); if (i > 0) h[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, " "));
+  });
+  var srv = (h.s || "https://ntfy.sh").replace(/\/+$/, "");
+  var $ = function (id) { return document.getElementById(id); };
+  $("no").textContent = h.n ? "#" + h.n : "";
+  $("k").textContent = h.k ? h.k + "판" : "-";
+  $("c").textContent = h.c || "-";
+  $("m").textContent = h.m || "-";
+  $("p").textContent = h.p || "-";
+  if (h.g) { $("more").href = h.g; } else { $("more").style.display = "none"; }
+  var st = $("st"), bok = $("bok"), bno = $("bno");
+  function say(cls, txt) { st.className = cls; st.textContent = txt; }
+  if (!h.n || !h.t || !h.a || !h.r) { bok.disabled = bno.disabled = true; say("bad", "주소가 잘렸습니다 — 휴대폰 알림을 다시 눌러 여세요."); return; }
+  function watch(t0) {                        // 결과 알림 (✅ #N · ❌ #N · ⚠ #N) 을 30초 동안 기다려 보여 줌
+    var topic = h.t.replace(/-r$/, ""), tries = 0;
+    (function poll() {
+      fetch(srv + "/" + topic + "/json?poll=1&since=" + t0).then(function (r) { return r.text(); }).then(function (txt) {
+        var hit = txt.split("\n").filter(Boolean).map(function (l) { try { return JSON.parse(l); } catch (e) { return {}; } })
+          .filter(function (m) { return m.event === "message" && m.title && (h.x === "test" ? m.title.indexOf("시험 단추가 잘 됩니다") >= 0
+                                                                              : new RegExp("^(✅|❌|⚠) #" + h.n + " ").test(m.title)); }).pop();
+        if (hit) { say(hit.title.indexOf("✅") === 0 ? "good" : (hit.title.indexOf("❌") === 0 ? "good" : "bad"), hit.title + (hit.message ? " — " + hit.message : "")); return; }
+        if (++tries < 15) setTimeout(poll, 2000);
+        else say("bad", "보냈지만 30초 안에 결과가 없습니다 — 회사 PC 의 허가 관리가 꺼져 있으면 GitHub 알림의 네모로 처리하세요.");
+      }).catch(function () { if (++tries < 15) setTimeout(poll, 2000); });
+    })();
+  }
+  function send(act) {
+    var tok = act === "approve" ? h.a : h.r;
+    bok.disabled = bno.disabled = true;
+    say("wait", (act === "approve" ? "승인" : "거절") + "을 보내는 중…");
+    var t0 = Math.floor(Date.now() / 1000) - 2;
+    var body = (h.x === "test" ? "test" : act) + " " + h.n + " " + tok;      // 미리 보기(x=test)는 시험 단추로
+    fetch(srv + "/" + h.t, { method: "POST", body: body }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      say("wait", (act === "approve" ? "승인" : "거절") + "을 보냈습니다 — 처리 결과를 기다리는 중…");
+      watch(t0);
+    }).catch(function (e) { bok.disabled = bno.disabled = false; say("bad", "보내지 못했습니다 (" + e.message + ") — 인터넷을 확인하고 다시 누르세요."); });
+  }
+  bok.addEventListener("click", function () { send("approve"); });
+  bno.addEventListener("click", function () { send("reject"); });
+})();
+</script>
+</body>
+</html>
