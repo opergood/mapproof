@@ -4,85 +4,160 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
+<meta name="theme-color" content="#172036">
 <title>GeoFix 사용 요청</title>
 <style>
   /* GeoFix 허가 관리 — 휴대폰 알림을 누르면 열리는 단추 화면 (v0.10.51 · 사용자: "버튼모양은안돼?")
-     주소 # 뒤에 요청 번호 · 답 주제 · 확인값이 들어 있음 (서버로는 안 감). 단추를 누르면 ntfy 답 주제로 'approve N 확인값' 을 보내고
-     PC 의 허가 관리가 처리 → 결과 알림을 이 화면에도 보여 줌 */
-  :root { --ink:#101828; --sub:#5b6474; --line:#e3e7ee; --bg:#f3f5f8; --card:#ffffff; --ok:#15803d; --ok-d:#116d34; --no:#c62828; --no-d:#a61f1f; }
+     2026-11-23 새 꼴 (사용자: "승인거절 화면좀 개선안될까뭔가 너무옛날느낌이야"): 남색 머리 · 요청자 카드 · 기한 안내 · 아래 큰 단추 · 결과 화면.
+     주소 # 뒤에 요청 번호 · 답 주제 · 확인값 (서버로는 안 감) + 판(v) · 받은 때(w) · 승인 기한 일수(d) · 1·2잠금(e).
+     단추를 누르면 ntfy 답 주제로 'approve N 확인값' 을 보내고 PC 의 허가 관리가 처리 → 결과 알림을 이 화면에도 보여 줌 */
+  :root { --navy:#172036; --bg:#eef1f6; --card:#ffffff; --ink:#111827; --sub:#5b6474; --line:#e3e7ee;
+          --ok:#16a34a; --ok-d:#15803d; --no:#dc2626; --no-d:#b91c1c; --pur:#7c3aed; --blue:#2563eb; --warn:#c2410c; }
   * { box-sizing:border-box; }
   html, body { margin:0; background:var(--bg); color:var(--ink);
                font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif; -webkit-text-size-adjust:100%; }
-  main { max-width:520px; margin:0 auto; padding:22px 18px 28px; }
-  .app { font-size:15px; color:var(--sub); letter-spacing:.02em; }
-  h1 { margin:6px 0 18px; font-size:30px; line-height:1.2; }
-  h1 .num { color:var(--sub); font-weight:600; margin-left:8px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:6px 18px; }
-  .row { display:flex; gap:14px; padding:13px 0; border-bottom:1px solid var(--line); font-size:19px; }
+  main { max-width:520px; margin:0 auto; padding-bottom:130px; }
+  .top { background:linear-gradient(160deg,#1f2b48 0%,#172036 55%,#111827 100%); color:#fff; padding:22px 22px 74px; border-radius:0 0 30px 30px; }
+  .brand { display:flex; align-items:center; gap:10px; font-size:14px; color:#c3cbdb; font-weight:700; letter-spacing:.02em; }
+  .logo { width:34px; height:34px; border-radius:10px; background:linear-gradient(145deg,#3b82f6,#1d4ed8); display:grid; place-items:center;
+          color:#fff; font-weight:800; font-size:13px; position:relative; }
+  .logo i { position:absolute; right:-6px; bottom:-6px; width:17px; height:17px; border-radius:50%; background:#22c55e; border:2px solid #172036;
+            font-style:normal; font-size:10px; display:grid; place-items:center; }
+  h1 { margin:20px 0 0; font-size:29px; letter-spacing:-.01em; }
+  h1 small { font-size:18px; color:#94a3c4; margin-left:6px; font-weight:700; }
+  .when { margin-top:6px; color:#aab4cb; font-size:14px; }
+  .card { margin:-50px 16px 0; background:var(--card); border-radius:24px; box-shadow:0 12px 32px rgba(16,24,40,.14); padding:20px 20px 8px; }
+  .who { display:flex; align-items:center; gap:14px; }
+  .av { width:58px; height:58px; flex:none; border-radius:19px; background:#ede9fe; color:#6d28d9; display:grid; place-items:center;
+        font-size:25px; font-weight:800; }
+  .who.in .av { background:#dbeafe; color:#1d4ed8; }
+  .nm { font-size:23px; font-weight:800; word-break:break-all; }
+  .co { font-size:15px; color:var(--sub); margin-top:3px; word-break:break-all; }
+  .chip { margin-left:auto; align-self:flex-start; padding:5px 11px; border-radius:999px; font-size:13px; font-weight:800; color:#fff;
+          background:var(--pur); white-space:nowrap; }
+  .chip.in { background:var(--blue); }
+  .rows { margin-top:16px; border-top:1px solid var(--line); }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:14px 2px; border-bottom:1px solid var(--line); font-size:15px; }
   .row:last-child { border-bottom:0; }
-  .row b { width:64px; flex:none; color:var(--sub); font-weight:600; }
-  .row span { word-break:break-all; }
-  .btns { display:grid; gap:14px; margin-top:22px; }
-  button { appearance:none; border:0; border-radius:18px; height:92px; font:inherit; font-size:32px; font-weight:700; color:#fff;
-           letter-spacing:.06em; cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.18); }
-  button:focus-visible { outline:4px solid #93c5fd; outline-offset:3px; }
-  .ok { background:var(--ok); } .ok:active { background:var(--ok-d); }
-  .no { background:var(--no); } .no:active { background:var(--no-d); }
-  button:disabled { opacity:.45; cursor:default; }
-  #st { min-height:58px; margin-top:18px; padding:14px 16px; border-radius:14px; font-size:18px; line-height:1.45; display:none; }
+  .row b { color:var(--sub); font-weight:600; white-space:nowrap; }
+  .row span { font-weight:700; text-align:right; word-break:break-all; }
+  .mono { font-family:Consolas,"Cascadia Mono",monospace; letter-spacing:.03em; }
+  .test { display:none; margin:14px 16px 0; padding:11px 14px; border-radius:14px; background:#fff7ed; color:#9a3412; font-size:14px; font-weight:700; }
+  .exp { margin:14px 16px 0; padding:14px 16px; border-radius:18px; background:#e8f0ff; color:#1e3a8a; font-size:14.5px; line-height:1.55; }
+  .exp b { color:#1d4ed8; }
+  #st { display:none; margin:14px 16px 0; padding:14px 16px; border-radius:16px; font-size:15.5px; line-height:1.5; }
   #st.wait { display:block; background:#eef2f9; color:#1f3a68; }
-  #st.good { display:block; background:#e8f6ec; color:#14532d; }
   #st.bad { display:block; background:#fdecec; color:#7f1d1d; }
-  .more { display:block; margin-top:22px; text-align:center; font-size:16px; color:var(--sub); }
-  .note { margin-top:10px; font-size:13px; color:var(--sub); text-align:center; line-height:1.5; }
+  .done { display:none; margin:14px 16px 0; background:var(--card); border-radius:24px; padding:26px 20px; text-align:center;
+          box-shadow:0 12px 32px rgba(16,24,40,.10); }
+  .mark { width:84px; height:84px; margin:0 auto 14px; border-radius:50%; display:grid; place-items:center; font-size:0; }
+  .mark span { width:56px; height:56px; border-radius:50%; color:#fff; font-size:31px; font-weight:800; display:grid; place-items:center; }
+  .done.good .mark { background:#dcfce7; } .done.good .mark span { background:var(--ok); }
+  .done.noed .mark { background:#fee2e2; } .done.noed .mark span { background:var(--no); }
+  .done.warn .mark { background:#ffedd5; } .done.warn .mark span { background:var(--warn); }
+  .done h2 { margin:0; font-size:24px; }
+  .done p { margin:8px 0 0; color:var(--sub); font-size:15px; line-height:1.55; word-break:break-all; }
+  .more { display:block; text-align:center; margin:18px 16px 0; color:var(--sub); font-size:14px; text-decoration:none; }
+  .note { margin:10px 16px 0; font-size:13px; color:var(--sub); text-align:center; line-height:1.5; }
+  .bar { position:fixed; left:0; right:0; bottom:0; padding:16px 16px calc(20px + env(safe-area-inset-bottom));
+         background:linear-gradient(180deg,rgba(238,241,246,0) 0%,var(--bg) 30%); }
+  .bar .in { max-width:520px; margin:0 auto; display:grid; grid-template-columns:1fr 1.7fr; gap:12px; }
+  button { appearance:none; height:66px; border:0; border-radius:20px; font:inherit; font-size:21px; font-weight:800; letter-spacing:.04em;
+           cursor:pointer; }
+  button:focus-visible { outline:4px solid #93c5fd; outline-offset:3px; }
+  .ok { background:var(--ok); color:#fff; box-shadow:0 8px 18px rgba(22,163,74,.35); }
+  .ok:active { background:var(--ok-d); }
+  .no { background:#fff; color:var(--no); border:2.5px solid var(--no); }
+  .no:active { background:#fef2f2; }
+  button:disabled { opacity:.45; cursor:default; box-shadow:none; }
 </style>
 </head>
 <body>
 <main>
-  <div class="app">GeoFix 허가 관리</div>
-  <h1>사용 요청<span class="num" id="no"></span></h1>
+  <div class="top">
+    <div class="brand"><div class="logo">GF<i>✓</i></div>GeoFix 허가 관리</div>
+    <h1>사용 요청<small id="no"></small></h1>
+    <div class="when" id="w"></div>
+  </div>
   <div class="card">
-    <div class="row"><b>구분</b><span id="k"></span></div>
-    <div class="row"><b>회사</b><span id="c"></span></div>
-    <div class="row"><b>이름</b><span id="m"></span></div>
-    <div class="row"><b>PC</b><span id="p"></span></div>
+    <div class="who" id="who">
+      <div class="av" id="av">?</div>
+      <div><div class="nm" id="m">-</div><div class="co" id="c">-</div></div>
+      <div class="chip" id="k">-</div>
+    </div>
+    <div class="rows">
+      <div class="row"><b>PC 번호</b><span class="mono" id="p">-</span></div>
+      <div class="row" id="row-v"><b>GeoFix 판</b><span id="v">-</span></div>
+    </div>
   </div>
-  <div class="btns">
-    <button class="ok" id="bok" type="button">승인</button>
-    <button class="no" id="bno" type="button">거절</button>
-  </div>
+  <div class="test" id="tst">시험 화면 — 눌러도 실제로 승인 · 거절되지 않습니다 (시험 단추만 보냄).</div>
+  <div class="exp" id="exp"></div>
   <div id="st" role="status" aria-live="polite"></div>
-  <a class="more" id="more" href="#">GitHub 에서 자세히 보기</a>
-  <div class="note">누르면 회사 PC 의 허가 관리가 처리합니다.<br>그 PC 가 켜져 있어야 하고, 외부판은 사용 기한 1년으로 승인합니다.</div>
+  <div class="done" id="done"><div class="mark"><span id="dm">✓</span></div><h2 id="dt"></h2><p id="dd"></p></div>
+  <a class="more" id="more" href="#">GitHub 에서 자세히 보기 ›</a>
+  <div class="note">누르면 회사 PC 의 허가 관리가 처리합니다 — 그 PC 가 켜져 있어야 합니다.</div>
 </main>
+<div class="bar" id="bar"><div class="in">
+  <button class="no" id="bno" type="button">✕ 거절</button>
+  <button class="ok" id="bok" type="button">✓ 승인</button>
+</div></div>
 <script>
 (function () {
-  var h = {};
+  var h = {}, cut = false;
   location.hash.replace(/^#/, "").split("&").forEach(function (kv) {
-    var i = kv.indexOf("="); if (i > 0) h[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, " "));
+    var i = kv.indexOf("="); if (i <= 0) { return; }
+    try { h[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, " ")); }
+    catch (e) { cut = true; }                          // %XX 가운데서 잘린 주소 — 아래에서 '잘렸습니다' 로
   });
   var srv = (h.s || "https://ntfy.sh").replace(/\/+$/, "");
   var $ = function (id) { return document.getElementById(id); };
+  var kind = h.k || "외부", inner = kind === "내부", ext12 = h.e === "ext12";
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function ymd(t) { return t.getFullYear() + "-" + pad(t.getMonth() + 1) + "-" + pad(t.getDate()); }
   $("no").textContent = h.n ? "#" + h.n : "";
-  $("k").textContent = h.k ? h.k + "판" : "-";
-  $("c").textContent = h.c || "-";
+  $("k").textContent = (ext12 ? "외부 1·2잠금" : kind) + "판";
+  if (inner) { $("k").className = "chip in"; $("who").className = "who in"; }
   $("m").textContent = h.m || "-";
+  $("c").textContent = h.c || "-";
   $("p").textContent = h.p || "-";
-  if (h.g) { $("more").href = h.g; } else { $("more").style.display = "none"; }
+  $("av").textContent = ((h.m || h.c || "?").replace(/^㈜\s*/, "") || "?").charAt(0);
+  if (h.v) { $("v").textContent = h.v; } else { $("row-v").style.display = "none"; }
+  if (h.w) { $("w").textContent = "받은 때 " + h.w + " · 회사 PC 가 받은 요청"; } else { $("w").style.display = "none"; }
+  var days = parseInt(h.d, 10);                        // 휴대폰 승인 기한 — 예전 알림(d 없음)은 내부판 없음 · 외부판 1년
+  if (isNaN(days)) { days = inner ? 0 : 365; }
+  if (days > 0) {
+    var t = new Date(); t.setDate(t.getDate() + days);
+    $("exp").innerHTML = "승인하면 <b>" + ymd(t) + " 까지 (" + (days === 365 ? "1년" : days + "일") + ")</b> 씁니다.<br>기한은 나중에 PC 의 허가 관리에서 바꿀 수 있어요.";
+  } else {
+    $("exp").innerHTML = "승인하면 <b>기한 없이</b> 씁니다 (사용 중지할 때까지).";
+  }
+  if (h.g && /^https:\/\/github\.com\//.test(h.g)) { $("more").href = h.g; } else { $("more").style.display = "none"; }
+  if (h.x === "test") { $("tst").style.display = "block"; }
   var st = $("st"), bok = $("bok"), bno = $("bno");
   function say(cls, txt) { st.className = cls; st.textContent = txt; }
-  if (!h.n || !h.t || !h.a || !h.r) { bok.disabled = bno.disabled = true; say("bad", "주소가 잘렸습니다 — 휴대폰 알림을 다시 눌러 여세요."); return; }
-  function watch(t0) {                        // 결과 알림 (✅ #N · ❌ #N · ⚠ #N) 을 30초 동안 기다려 보여 줌
+  function done(cls, mark, title, msg) {               // 처리 결과 화면 — 단추 · 기한 안내를 거두고 크게
+    $("done").className = "done " + cls; $("dm").textContent = mark; $("dt").textContent = title; $("dd").textContent = msg || "";
+    $("done").style.display = "block"; $("bar").style.display = "none"; $("exp").style.display = "none"; say("", "");
+  }
+  window.gfDone = done;                                // 그림 · 시험용
+  if (cut || !h.n || !h.t || !h.a || !h.r) { bok.disabled = bno.disabled = true; say("bad", "주소가 잘렸습니다 — 휴대폰 알림을 다시 눌러 여세요."); return; }
+  function watch(t0) {                                 // 결과 알림 (✅ #N · ❌ #N · ⚠ #N) 을 30초 동안 기다려 보여 줌
     var topic = h.t.replace(/-r$/, ""), tries = 0;
     (function poll() {
       fetch(srv + "/" + topic + "/json?poll=1&since=" + t0).then(function (r) { return r.text(); }).then(function (txt) {
         var hit = txt.split("\n").filter(Boolean).map(function (l) { try { return JSON.parse(l); } catch (e) { return {}; } })
           .filter(function (m) { return m.event === "message" && m.title && (h.x === "test" ? m.title.indexOf("시험 단추가 잘 됩니다") >= 0
                                                                               : new RegExp("^(✅|❌|⚠) #" + h.n + " ").test(m.title)); }).pop();
-        if (hit) { say(hit.title.indexOf("✅") === 0 ? "good" : (hit.title.indexOf("❌") === 0 ? "good" : "bad"), hit.title + (hit.message ? " — " + hit.message : "")); return; }
-        if (++tries < 15) setTimeout(poll, 2000);
-        else say("bad", "보냈지만 30초 안에 결과가 없습니다 — 회사 PC 의 허가 관리가 꺼져 있으면 GitHub 알림의 네모로 처리하세요.");
-      }).catch(function () { if (++tries < 15) setTimeout(poll, 2000); });
+        if (hit) {
+          var ttl = hit.title.replace(/^(✅|❌|⚠)\s*/, "");      // '#N' 은 남김 — '⚠ #N 은 이미 처리된…' 에서 주어
+          if (hit.title.indexOf("✅") === 0) { done("good", "✓", ttl, hit.message); }
+          else if (hit.title.indexOf("❌") === 0) { done("noed", "✕", ttl, hit.message); }
+          else { done("warn", "!", ttl, hit.message); }
+          return;
+        }
+        if (++tries < 15) { setTimeout(poll, 2000); }
+        else { say("bad", "보냈지만 30초 안에 결과가 없습니다 — 회사 PC 의 허가 관리가 꺼져 있으면 GitHub 알림의 네모로 처리하세요."); }
+      }).catch(function () { if (++tries < 15) { setTimeout(poll, 2000); } });
     })();
   }
   function send(act) {
@@ -92,8 +167,8 @@
     var t0 = Math.floor(Date.now() / 1000) - 2;
     var body = (h.x === "test" ? "test" : act) + " " + h.n + " " + tok;      // 미리 보기(x=test)는 시험 단추로
     fetch(srv + "/" + h.t, { method: "POST", body: body }).then(function (r) {
-      if (!r.ok) throw new Error(r.status);
-      say("wait", (act === "approve" ? "승인" : "거절") + "을 보냈습니다 — 처리 결과를 기다리는 중…");
+      if (!r.ok) { throw new Error(r.status); }
+      say("wait", (act === "approve" ? "승인" : "거절") + "을 보냈습니다 — 회사 PC 가 처리하기를 기다리는 중…");
       watch(t0);
     }).catch(function (e) { bok.disabled = bno.disabled = false; say("bad", "보내지 못했습니다 (" + e.message + ") — 인터넷을 확인하고 다시 누르세요."); });
   }
