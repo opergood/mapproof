@@ -95,6 +95,7 @@
   <div id="st" role="status" aria-live="polite"></div>
   <div class="done" id="done"><div class="mark"><span id="dm">✓</span></div><h2 id="dt"></h2><p id="dd"></p></div>
   <a class="more" id="more" href="#">GitHub 에서 자세히 보기 ›</a>
+  <a class="more" id="lst" href="list.html" style="display:none">허가 목록 보기 ›</a>
   <div class="note">누르면 회사 PC 의 허가 관리가 처리합니다 — 그 PC 가 켜져 있어야 합니다.</div>
 </main>
 <div class="bar" id="bar"><div class="in">
@@ -111,6 +112,7 @@
   });
   var srv = (h.s || "https://ntfy.sh").replace(/\/+$/, "");
   var $ = function (id) { return document.getElementById(id); };
+  try { if (localStorage.getItem("gfAllowLink")) { $("lst").style.display = "block"; } } catch (e) { /* 휴대폰 목록(list.html)을 연결한 휴대폰에만 (2026-11-26) */ }
   var kind = h.k || "외부", inner = kind === "내부", ext12 = h.e === "ext12";
   function pad(n) { return (n < 10 ? "0" : "") + n; }
   function ymd(t) { return t.getFullYear() + "-" + pad(t.getMonth() + 1) + "-" + pad(t.getDate()); }

@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#172036">
+<title>GeoFix 허가 목록</title>
+<style>
+  /* GeoFix 허가 관리 — 휴대폰에서 목록 보기 (2026-11-26 · 사용자: "허가관리 창 내핸드폰에서도 볼수있게할수있어?" → "1번")
+     설계 docs/2026-11-26-허가관리-휴대폰목록-design.md. 승인 화면(ok.html)과 같은 꼴: 남색 머리 · 흰 카드.
+     연결: PC 화면의 QR → 이 주소 # 뒤 v(보기 열쇠) · t(주제) · s(시험 서버) → 이 휴대폰(localStorage)에 두고 주소에서는 지움.
+     [새로 고침] = ntfy 답 주제로 'list 번호 확인값' → PC 의 허가 관리가 감싼 목록을 보기 주제(주제-v)에 → 여기서 풂 (WebCrypto · DecompressionStream).
+     받은 글은 모두 textContent 로만 넣음 (요청자가 적은 이름 · 회사에 꺾쇠가 있어도 화면을 못 바꿈). */
+  :root { --navy:#172036; --bg:#eef1f6; --card:#ffffff; --ink:#111827; --sub:#5b6474; --line:#e3e7ee;
+          --ok:#16a34a; --ok-d:#15803d; --no:#dc2626; --pur:#7c3aed; --blue:#2563eb; --warn:#c2410c; --org:#ea580c; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--bg); color:var(--ink);
+               font-family:"Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif; -webkit-text-size-adjust:100%; }
+  [hidden] { display:none !important; }
+  main { max-width:560px; margin:0 auto; padding-bottom:36px; }
+  .top { background:linear-gradient(160deg,#1f2b48 0%,#172036 55%,#111827 100%); color:#fff; padding:20px 20px 66px; border-radius:0 0 30px 30px; }
+  .brand { display:flex; align-items:center; gap:10px; font-size:14px; color:#c3cbdb; font-weight:700; letter-spacing:.02em; }
+  .logo { width:34px; height:34px; border-radius:10px; background:linear-gradient(145deg,#3b82f6,#1d4ed8); display:grid; place-items:center;
+          color:#fff; font-weight:800; font-size:13px; position:relative; flex:none; }
+  .logo i { position:absolute; right:-6px; bottom:-6px; width:17px; height:17px; border-radius:50%; background:#22c55e; border:2px solid #172036;
+            font-style:normal; font-size:10px; display:grid; place-items:center; }
+  .bar1 { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  h1 { margin:18px 0 0; font-size:28px; letter-spacing:-.01em; }
+  .when { margin-top:6px; color:#aab4cb; font-size:14px; }
+  .rf { appearance:none; flex:none; border:1.5px solid rgba(255,255,255,.28); height:40px; padding:0 14px; border-radius:999px;
+        background:rgba(255,255,255,.10); color:#fff; font:inherit; font-size:14.5px; font-weight:800; display:inline-flex; align-items:center;
+        gap:6px; cursor:pointer; }
+  .rf:active { background:rgba(255,255,255,.2); }
+  .rf:disabled { opacity:.5; cursor:default; }
+  .rf .ic { display:inline-block; font-size:17px; line-height:1; }
+  .rf.spin .ic { animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .rf.spin .ic { animation:none; } }
+  .sum { margin:-46px 16px 0; background:var(--card); border-radius:22px; box-shadow:0 12px 32px rgba(16,24,40,.14); padding:16px;
+         display:flex; flex-wrap:wrap; gap:8px; min-height:66px; align-items:center; }
+  .pill { padding:7px 12px; border-radius:999px; font-size:14px; font-weight:800; background:#e8edf5; color:#24324d; white-space:nowrap; }
+  .pill.org { background:var(--org); color:#fff; }
+  .pill.grn { background:var(--ok-d); color:#fff; }
+  .pill.dim { background:#f3f4f6; color:#6b7280; }
+  #st { display:none; margin:12px 16px 0; padding:12px 14px; border-radius:14px; font-size:14.5px; line-height:1.5; }
+  #st.wait { display:block; background:#e8f0ff; color:#1e3a8a; }
+  #st.bad { display:block; background:#fdecec; color:#7f1d1d; }
+  h2 { margin:24px 20px 10px; font-size:17px; display:flex; align-items:center; gap:8px; }
+  h2 .n { font-size:13px; padding:2px 9px; border-radius:999px; background:#dfe5ef; color:#24324d; }
+  h2 .n.org { background:var(--org); color:#fff; }
+  .req { margin:0 16px 12px; background:var(--card); border-radius:20px; padding:16px 16px 14px; box-shadow:0 6px 18px rgba(16,24,40,.08); }
+  .who { display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .av { width:46px; height:46px; flex:none; border-radius:15px; background:#ede9fe; color:#6d28d9; display:grid; place-items:center;
+        font-size:20px; font-weight:800; }
+  .who.in .av { background:#dbeafe; color:#1d4ed8; }
+  .rn { font-size:18px; font-weight:800; word-break:break-all; }
+  .rc { font-size:14px; color:var(--sub); margin-top:2px; word-break:break-all; }
+  .chip { margin-left:auto; align-self:flex-start; padding:4px 10px; border-radius:999px; font-size:12.5px; font-weight:800; color:#fff;
+          background:var(--pur); white-space:nowrap; }
+  .chip.in { background:var(--blue); }
+  .kv { display:flex; justify-content:space-between; gap:12px; padding:9px 2px; border-top:1px solid var(--line); font-size:14.5px; }
+  .kv b { color:var(--sub); font-weight:600; white-space:nowrap; }
+  .kv span { font-weight:700; text-align:right; word-break:break-all; }
+  .go { display:block; margin-top:10px; height:50px; line-height:50px; text-align:center; border-radius:14px; background:var(--ok); color:#fff;
+        font-weight:800; font-size:16px; text-decoration:none; box-shadow:0 6px 14px rgba(22,163,74,.28); }
+  .go:active { background:var(--ok-d); }
+  .find { margin:0 16px 10px; }
+  .find input { width:100%; height:46px; border-radius:14px; border:1.5px solid #cfd6e2; padding:0 14px; font:inherit; font-size:15.5px;
+                background:#fff; color:var(--ink); }
+  .find input:focus { border-color:var(--blue); outline:none; box-shadow:0 0 0 3px rgba(37,99,235,.18); }
+  .grp { margin:0 16px 12px; background:var(--card); border-radius:20px; overflow:hidden; box-shadow:0 6px 18px rgba(16,24,40,.08); }
+  .gh { width:100%; appearance:none; border:0; background:#dbe4f3; color:#1e3a6e; font:inherit; font-size:15px; font-weight:800;
+        padding:13px 16px; display:flex; gap:10px; align-items:center; cursor:pointer; text-align:left; }
+  .gh .ar { width:14px; flex:none; }
+  .gh .c { margin-left:auto; font-weight:700; color:#3b4f78; font-size:13.5px; white-space:nowrap; }
+  .grp.nog .gh { background:#eceff4; color:#4b5563; }
+  .gnone { padding:12px 16px; color:var(--sub); font-size:14px; border-top:1px solid var(--line); }
+  details.pc { border-top:1px solid var(--line); }
+  details.pc summary { list-style:none; padding:12px 16px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; cursor:pointer; }
+  details.pc summary::-webkit-details-marker { display:none; }
+  details.pc[open] summary { background:#f7f9fc; }
+  .nm { font-weight:800; font-size:15.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nm small { font-weight:600; color:var(--sub); font-size:13.5px; margin-left:6px; }
+  .seen { text-align:right; font-size:13.5px; font-weight:700; color:var(--sub); white-space:nowrap; }
+  .seen.live { color:var(--ok-d); }
+  .ln2 { font-size:13px; color:var(--sub); display:flex; align-items:center; gap:6px; min-width:0; }
+  .ln2 .mono { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .kd { font-size:11.5px; font-weight:800; color:#fff; padding:2px 7px; border-radius:999px; background:var(--pur); flex:none; }
+  .kd.in { background:var(--blue); }
+  .mono { font-family:Consolas,"Cascadia Mono",monospace; letter-spacing:.02em; }
+  .exp { text-align:right; font-size:13px; color:var(--sub); white-space:nowrap; }
+  .exp.soon { color:var(--warn); font-weight:800; }
+  .exp.old { color:var(--no); font-weight:800; }
+  .more { padding:2px 16px 12px; background:#f7f9fc; font-size:13.5px; }
+  .more div { display:flex; justify-content:space-between; gap:12px; padding:5px 0; }
+  .more b { color:var(--sub); font-weight:600; white-space:nowrap; }
+  .more span { text-align:right; word-break:break-all; }
+  .empty { margin:0 16px; padding:22px; text-align:center; color:var(--sub); background:var(--card); border-radius:20px; font-size:14.5px; }
+  .pair { margin:-46px 16px 0; background:var(--card); border-radius:24px; box-shadow:0 12px 32px rgba(16,24,40,.14); padding:26px 22px; text-align:center; }
+  .pair .qr { width:76px; height:76px; margin:0 auto 14px; border-radius:20px; background:#e8f0ff; display:grid; place-items:center; }
+  .pair .qr span { display:grid; grid-template-columns:repeat(3,14px); gap:4px; }
+  .pair .qr span i { width:14px; height:14px; border-radius:3px; background:#1d4ed8; }
+  .pair .qr span i:nth-child(2), .pair .qr span i:nth-child(4), .pair .qr span i:nth-child(9) { background:transparent; border:3px solid #1d4ed8; }
+  .pair h2 { margin:0; justify-content:center; font-size:22px; }
+  .pair p { margin:10px 0 0; color:var(--sub); font-size:15px; line-height:1.6; }
+  .pair p b { color:var(--ink); }
+  .note { margin:20px 20px 0; font-size:13px; color:var(--sub); line-height:1.55; text-align:center; }
+  .forget { display:block; margin:12px auto 0; background:none; border:0; color:var(--sub); text-decoration:underline; font:inherit; font-size:13px;
+            cursor:pointer; padding:8px; }
+  :focus-visible { outline:3px solid #93c5fd; outline-offset:2px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div class="bar1">
+      <div class="brand"><div class="logo">GF<i>✓</i></div>GeoFix 허가 관리</div>
+      <button class="rf" id="rf" type="button" hidden><span class="ic" aria-hidden="true">↻</span>새로 고침</button>
+    </div>
+    <h1>허가 목록</h1>
+    <div class="when" id="w">회사 PC 의 허가 관리가 보내 줍니다</div>
+  </div>
+  <section class="pair" id="pair" hidden>
+    <div class="qr" aria-hidden="true"><span><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span></div>
+    <h2>연결이 필요합니다</h2>
+    <p>회사 PC 의 <b>GeoFix 허가 관리</b> › <b>휴대폰 알림</b> › <b>[목록 QR 보이기…]</b> 를 누르고, 뜬 QR 을 이 휴대폰 카메라로 비추세요.</p>
+    <p>처음 한 번만 하면 됩니다. 연결 열쇠는 이 휴대폰에만 남습니다.</p>
+  </section>
+  <div id="view" hidden>
+    <div class="sum" id="sum"><span class="pill dim">목록을 기다리는 중</span></div>
+    <div id="st" role="status" aria-live="polite"></div>
+    <div id="reqs" hidden>
+      <h2>받은 사용 요청 <span class="n org" id="nreq">0</span></h2>
+      <div id="reqlist"></div>
+    </div>
+    <div id="pcs" hidden>
+      <h2>허가된 PC <span class="n" id="npc">0</span></h2>
+      <div class="find"><input id="q" type="search" placeholder="이름 · 회사 · PC 번호 · 그룹 찾기" autocomplete="off" aria-label="허가된 PC 찾기"></div>
+      <div id="grps"></div>
+      <div class="empty" id="nofind" hidden>찾는 PC 가 없습니다.</div>
+    </div>
+    <div class="note">회사 PC 의 허가 관리가 보내 준 목록입니다. 그 PC 가 켜져 있어야 새로 받습니다.<br>
+      승인 · 거절은 요청을 눌러 휴대폰에서, 기한 · 그룹 · 사용 중지는 PC 에서 합니다. 연락처는 보내지 않습니다.</div>
+    <button class="forget" id="forget" type="button">이 휴대폰에서 연결 지우기</button>
+  </div>
+</main>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var LS_LINK = "gfAllowLink", LS_LIST = "gfAllowList", LS_FOLD = "gfAllowFold";
+  var KEY_RE = /^[A-Za-z0-9_-]{43}$/, TOPIC_RE = /^geofix-[0-9a-f]{16}$/, SRV_RE = /^(https:\/\/ntfy\.sh|http:\/\/(127\.0\.0\.1|localhost)(:\d+)?)$/;
+  var OK_RE = /^https:\/\/opergood\.github\.io\/mapproof\/ok\.html#/;      // 승인 · 거절 화면 (서버는 ntfy.sh · 시험만 이 PC)
+  function state(s) { document.documentElement.setAttribute("data-state", s); }
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 개인 정보 보호 창 등 — 이번만 씀 */ } }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) { /* 없음 */ } }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) { e.className = cls; } if (text != null) { e.textContent = text; } return e; }
+
+  // ---- 연결: # 뒤(QR) → 이 휴대폰에 두고 주소에서 지움 (홈 화면 바로가기 · 방문 기록에 열쇠가 안 남게 · 새 QR 이 늘 이김)
+  var h = {};
+  location.hash.replace(/^#/, "").split("&").forEach(function (kv) {
+    var i = kv.indexOf("=");
+    if (i > 0) { try { h[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, " ")); } catch (e) { /* 잘린 주소 */ } }
+  });
+  function stored() { var o = null; try { o = JSON.parse(lsGet(LS_LINK) || "null"); } catch (e) { o = null; }
+    return o && KEY_RE.test(o.v || "") && TOPIC_RE.test(o.t || "") ? o : null; }
+  var link = stored();
+  if (KEY_RE.test(h.v || "") && TOPIC_RE.test(h.t || "")) {
+    var neu = { v: h.v, t: h.t, s: SRV_RE.test(h.s || "") ? h.s : "" };
+    var differ = link && (link.v !== neu.v || link.t !== neu.t || (link.s || "") !== neu.s);
+    // 이미 연결한 휴대폰이면 묻고 바꿈 — 남이 만든 주소를 열어도 연결이 몰래 바뀌지 않게 (같은 QR 을 다시 비추면 묻지 않음)
+    if (!differ || confirm("이 휴대폰의 연결을 새 QR 로 바꿀까요?\n\nPC 의 허가 관리에서 [연결 바꾸기] 를 했을 때만 [확인] 을 누르세요.")) {
+      link = neu;
+      lsSet(LS_LINK, JSON.stringify(link));
+    }
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { /* 그대로 */ }
+  }
+  if (!link) { $("pair").hidden = false; state("pair"); return; }
+  $("view").hidden = false;
+  var rf = $("rf");
+  rf.hidden = false;
+  var srv = (link.s || "https://ntfy.sh").replace(/\/+$/, "");
+  var st = $("st");
+  function say(cls, txt) { st.className = cls; st.textContent = txt; }
+  if (!(window.crypto && crypto.subtle && window.TextEncoder && typeof DecompressionStream === "function")) {
+    say("bad", "이 브라우저로는 목록을 풀 수 없습니다 — 크롬 · 삼성 인터넷 · 사파리 최신판으로 여세요.");
+    rf.disabled = true; state("err"); return;
+  }
+
+  // ---- 열쇠 · 풀기 (PC yg58 ntfy_seal 과 같은 셈: HMAC-SHA256)
+  var enc = new TextEncoder(), S = crypto.subtle, keys = null;
+  function bytes(bin) { var u = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) { u[i] = bin.charCodeAt(i); } return u; }
+  function b64u(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) { s += "="; } return bytes(atob(s)); }
+  function hex(u) { var o = ""; for (var i = 0; i < u.length; i++) { o += (u[i] < 16 ? "0" : "") + u[i].toString(16); } return o; }
+  function cat(list) { var n = 0, p = 0, i; for (i = 0; i < list.length; i++) { n += list[i].length; } var o = new Uint8Array(n);
+    for (i = 0; i < list.length; i++) { o.set(list[i], p); p += list[i].length; } return o; }
+  function hk(raw) { return S.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]); }
+  function sg(k, data) { return S.sign("HMAC", k, data).then(function (b) { return new Uint8Array(b); }); }
+  function getKeys() {                                   // [명령 확인 · 감싸기 · 확인] = HMAC(보기 열쇠, 'cmd' · 'enc' · 'mac')
+    if (!keys) {
+      keys = hk(b64u(link.v)).then(function (vk) {
+        return Promise.all(["cmd", "enc", "mac"].map(function (t) { return sg(vk, enc.encode(t)).then(hk); }));
+      });
+    }
+    return keys;
+  }
+  async function unseal(nonce, blob) {
+    var k = await getKeys(), raw = bytes(atob(blob));
+    if (raw.length < 33) { throw new Error("짧은 조각"); }
+    var iv = raw.slice(0, 16), ct = raw.slice(16, raw.length - 16), tag = raw.slice(raw.length - 16);
+    var want = await sg(k[2], cat([enc.encode("GFL1" + nonce), iv, ct])), diff = 0;
+    for (var i = 0; i < 16; i++) { diff |= want[i] ^ tag[i]; }
+    if (diff) { throw new Error("확인값이 맞지 않음"); }
+    var jobs = [];
+    for (var b = 0; b < Math.ceil(ct.length / 32); b++) { var c = new Uint8Array(4); new DataView(c.buffer).setUint32(0, b); jobs.push(sg(k[1], cat([iv, c]))); }
+    var ks = cat(await Promise.all(jobs)), pt = new Uint8Array(ct.length);
+    for (var j = 0; j < ct.length; j++) { pt[j] = ct[j] ^ ks[j]; }
+    var txt = await new Response(new Blob([pt]).stream().pipeThrough(new DecompressionStream("deflate"))).text();
+    return JSON.parse(txt);
+  }
+
+  // ---- 시각 · 기한 글 (PC 의 allow_seen_text · allow_exp_text 와 같은 말)
+  function pd(s) { var m = /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2}))?)?/.exec(s || "");
+    return m ? new Date(+m[1], +m[2] - 1, +m[3], +(m[4] || 0), +(m[5] || 0), +(m[6] || 0)) : null; }
+  function p2(n) { return (n < 10 ? "0" : "") + n; }
+  function hm(t) { return p2(t.getHours()) + ":" + p2(t.getMinutes()); }
+  function days(a, b) { return Math.round((new Date(a.getFullYear(), a.getMonth(), a.getDate()) - new Date(b.getFullYear(), b.getMonth(), b.getDate())) / 864e5); }
+  function when(s) { var t = pd(s), now = new Date(); if (!t) { return "-"; } var d = days(now, t);
+    if (d === 0) { return "오늘 " + hm(t); } if (d === 1) { return "어제 " + hm(t); }
+    return t.getFullYear() === now.getFullYear() ? p2(t.getMonth() + 1) + "-" + p2(t.getDate()) + " " + hm(t) : s.slice(0, 10); }
+  function seen(s, liveMin) { var t = pd(s); if (!t) { return { text: "—", live: false }; }
+    var m = (Date.now() - t.getTime()) / 6e4;
+    return (m >= -5 && m <= liveMin) ? { text: "● 사용 중", live: true } : { text: when(s), live: false }; }
+  function expiry(x, soon) {                             // 줄에는 짧게 (text) · 펼친 자세히에는 날짜까지 (full)
+    if (!x) { return { text: "기한 없음", full: "없음", cls: "" }; }
+    var t = pd(x);
+    if (!t) { return { text: x, full: x, cls: "" }; }
+    var n = days(t, new Date());
+    if (n < 0) { return { text: "⚠ 기한 지남", full: x + " (지남)", cls: "old" }; }
+    if (n <= soon) { var left = n === 0 ? "오늘까지" : n + "일 남음"; return { text: left, full: x + " (" + left + ")", cls: "soon" }; }
+    return { text: "~" + x, full: x, cls: "" }; }
+
+  // ---- 그리기
+  var cur = null, fold = {};
+  try { (JSON.parse(lsGet(LS_FOLD) || "[]") || []).forEach(function (g) { fold[g] = true; }); } catch (e) { fold = {}; }
+  function pill(text, cls) { return el("span", "pill" + (cls ? " " + cls : ""), text); }
+  function kv(parent, label, value, mono) { if (!value) { return; } var r = el("div", "kv"); r.appendChild(el("b", null, label));
+    r.appendChild(el("span", mono ? "mono" : null, value)); parent.appendChild(r); }
+  function render(d, cached) {
+    var pcs = d.pcs || [], req = d.req || [], live = d.live || 15, soon = d.soon == null ? 30 : d.soon;
+    $("w").textContent = (cached ? "지난 목록 · " : "") + when(d.at) + " 기준 · 회사 PC 에서 받음";
+    var nIn = pcs.filter(function (p) { return p.k === "내부"; }).length, liveSet = {};
+    pcs.forEach(function (p) { if (seen(p.s, live).live) { liveSet[p.p] = 1; } });
+    var nLive = Object.keys(liveSet).length, sum = $("sum");
+    sum.textContent = "";
+    sum.appendChild(req.length ? pill("요청 " + req.length + "건 대기", "org") : pill("요청 없음", "dim"));
+    sum.appendChild(pill("내부 " + nIn + "대"));
+    sum.appendChild(pill("외부 " + (pcs.length - nIn) + "대"));
+    sum.appendChild(pill("사용 중 " + nLive + "대", nLive ? "grn" : "dim"));
+    sum.appendChild(pill("그룹 " + (d.groups || []).length + "개"));
+    if (d.useErr) { sum.appendChild(pill("사용 기록 못 읽음", "dim")); }
+    // 받은 사용 요청
+    var rl = $("reqlist");
+    rl.textContent = "";
+    $("reqs").hidden = !req.length;
+    $("nreq").textContent = req.length;
+    req.forEach(function (q) {
+      var c = el("div", "req"), inner = q.k === "내부", who = el("div", "who" + (inner ? " in" : ""));
+      who.appendChild(el("div", "av", ((q.m || q.c || "?").replace(/^㈜\s*/, "") || "?").charAt(0)));
+      var nm = el("div");
+      nm.appendChild(el("div", "rn", q.m || q.c || "-"));
+      if (q.m && q.c) { nm.appendChild(el("div", "rc", q.c)); }
+      who.appendChild(nm);
+      who.appendChild(el("div", "chip" + (inner ? " in" : ""), (q.k || "외부") + "판"));
+      c.appendChild(who);
+      kv(c, "PC 번호", q.p, true);
+      kv(c, "받은 때", q.w ? when(q.w) : "");
+      kv(c, "GeoFix 판", q.v);
+      kv(c, "메모", q.memo);
+      if (typeof q.u === "string" && OK_RE.test(q.u)) {
+        var a = el("a", "go", "승인 · 거절 화면 열기");
+        a.href = q.u;
+        c.appendChild(a);
+      }
+      rl.appendChild(c);
+    });
+    // 허가된 PC — 그룹마다 (가나다 · 미지정은 끝) · 그룹 안은 내부 먼저 · PC 번호 차례 (PC 화면과 같게)
+    $("pcs").hidden = false;
+    $("npc").textContent = pcs.length;
+    var by = {}, names = (d.groups || []).slice();
+    pcs.forEach(function (p) { var g = p.g || ""; (by[g] = by[g] || []).push(p); if (g && names.indexOf(g) < 0) { names.push(g); } });
+    names.sort();
+    if (by[""]) { names.push(""); }
+    var box = $("grps");
+    box.textContent = "";
+    names.forEach(function (g) {
+      var list = (by[g] || []).slice().sort(function (a, b) { return (a.k !== "내부") - (b.k !== "내부") || (a.p < b.p ? -1 : a.p > b.p ? 1 : 0); });
+      var label = g || d.nogrp || "미지정", sec = el("section", "grp" + (g ? "" : " nog")), btn = el("button", "gh");
+      btn.type = "button";
+      var ar = el("span", "ar", fold[label] ? "▸" : "▾");
+      btn.appendChild(ar);
+      btn.appendChild(el("span", null, label));
+      btn.appendChild(el("span", "c", list.length + "대"));
+      btn.setAttribute("aria-expanded", fold[label] ? "false" : "true");
+      sec.appendChild(btn);
+      var body = el("div");
+      body.hidden = !!fold[label];
+      if (!list.length) { body.appendChild(el("div", "gnone", "이 그룹에는 PC 가 없습니다.")); }
+      list.forEach(function (p) {
+        var det = el("details", "pc"), sm = el("summary"), inner = p.k === "내부", s = seen(p.s, live), x = expiry(p.x, soon);
+        var nm = el("div", "nm", p.m || p.c || p.p);
+        if (p.m && p.c) { nm.appendChild(el("small", null, p.c)); }
+        sm.appendChild(nm);
+        sm.appendChild(el("div", "seen" + (s.live ? " live" : ""), s.text));
+        var l2 = el("div", "ln2");
+        l2.appendChild(el("span", "kd" + (inner ? " in" : ""), inner ? "내부" : "외부"));
+        l2.appendChild(el("span", "mono", p.p));
+        sm.appendChild(l2);
+        sm.appendChild(el("div", "exp" + (x.cls ? " " + x.cls : ""), x.text));
+        det.appendChild(sm);
+        var more = el("div", "more");
+        [["사용 기한", x.full], ["승인한 날", p.ap], ["GeoFix 판", p.gv], ["마지막 사용", p.s ? when(p.s) : "기록 없음"], ["메모", p.memo]].forEach(function (r) {
+          if (r[1]) { var row = el("div"); row.appendChild(el("b", null, r[0])); row.appendChild(el("span", null, r[1])); more.appendChild(row); }
+        });
+        det.appendChild(more);
+        det.setAttribute("data-find", [p.m, p.c, p.p, label, p.memo, inner ? "내부" : "외부"].join(" ").toLowerCase());
+        body.appendChild(det);
+      });
+      sec.appendChild(body);
+      btn.addEventListener("click", function () {
+        var shut = !body.hidden;
+        body.hidden = shut;
+        ar.textContent = shut ? "▸" : "▾";
+        btn.setAttribute("aria-expanded", shut ? "false" : "true");
+        if (shut) { fold[label] = true; } else { delete fold[label]; }
+        lsSet(LS_FOLD, JSON.stringify(Object.keys(fold)));
+      });
+      box.appendChild(sec);
+    });
+    if (!pcs.length && !names.length) { box.appendChild(el("div", "empty", "허가된 PC 가 없습니다.")); }
+    filter();
+  }
+  function filter() {                                    // 찾기 — 찾는 동안은 접은 그룹도 펼쳐 보여 줌
+    var q = $("q").value.trim().toLowerCase(), any = false;
+    Array.prototype.forEach.call(document.querySelectorAll("#grps .grp"), function (sec) {
+      var rows = sec.querySelectorAll("details.pc"), hit = 0, body = sec.lastChild;
+      Array.prototype.forEach.call(rows, function (r) { var ok = !q || r.getAttribute("data-find").indexOf(q) >= 0; r.hidden = !ok; if (ok) { hit++; } });
+      sec.hidden = !!q && !hit;
+      if (q) { body.hidden = false; } else { body.hidden = sec.querySelector(".ar").textContent === "▸"; }
+      if (hit) { any = true; }
+    });
+    $("nofind").hidden = !q || any;
+  }
+  $("q").addEventListener("input", filter);
+
+  // ---- 묻고 받기
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function combos(lists, limit) {                        // 조각 자리마다 받은 것들의 조합 — 나중에 온 것부터, limit 가지까지
+    var out = [[]];
+    lists.forEach(function (l) {
+      var nx = [];
+      out.forEach(function (pre) { l.slice().reverse().forEach(function (x) { if (nx.length < limit) { nx.push(pre.concat([x])); } }); });
+      out = nx;
+    });
+    return out;
+  }
+  async function wait(nonce) {                           // 보기 주제에서 'GFL1 번호 i/n 조각' 을 모아 풂 — 30초까지 → 목록 · null(답 없음) · "bad"
+    // since=3m = ntfy 서버 시각으로 3분 안 (휴대폰 시계가 틀려도 놓치지 않게 — 번호로 거르므로 앞 것이 섞여도 됨)
+    // 주제를 아는 사람이 답 주제의 번호를 보고 가짜 조각을 먼저 끼워도: 확인값이 맞지 않는 조합은 버리고 진짜 조각을 계속 기다림
+    var cand = {}, seenId = {}, tried = {}, bad = false;
+    for (var tries = 0; tries < 20; tries++) {
+      await sleep(tries ? 1500 : 700);
+      var txt = "";
+      try { txt = await (await fetch(srv + "/" + link.t + "-v/json?poll=1&since=3m", { cache: "no-store" })).text(); }
+      catch (e) { continue; }
+      txt.split("\n").forEach(function (line) {
+        var m;
+        try { m = JSON.parse(line); } catch (e) { return; }
+        if (!m || m.event !== "message" || typeof m.message !== "string" || !m.id || seenId[m.id]) { return; }
+        seenId[m.id] = 1;
+        var p = m.message.split(" "), ij = p.length === 4 && p[0] === "GFL1" && p[1] === nonce && /^(\d{1,2})\/(\d{1,2})$/.exec(p[2]);
+        if (!ij || +ij[1] < 1 || +ij[1] > +ij[2]) { return; }
+        var byN = cand[ij[2]] = cand[ij[2]] || {};
+        (byN[ij[1]] = byN[ij[1]] || []).push({ id: m.id, d: p[3] });
+      });
+      var best = 0, bestN = 0;
+      for (var n in cand) {
+        var lists = [], i;
+        for (i = 1; i <= +n; i++) { if (cand[n][i]) { lists.push(cand[n][i]); } }
+        if (lists.length > best) { best = lists.length; bestN = +n; }
+        if (lists.length < +n) { continue; }
+        var cs = combos(lists, 32);
+        for (var c = 0; c < cs.length; c++) {
+          var key = n + ":" + cs[c].map(function (x) { return x.id; }).join(",");
+          if (tried[key]) { continue; }
+          tried[key] = 1;
+          try { return await unseal(nonce, cs[c].map(function (x) { return x.d; }).join("")); } catch (e) { bad = true; }
+        }
+      }
+      if (bestN > 1) { say("wait", "목록을 받는 중… (" + best + "/" + bestN + ")"); }
+    }
+    return bad ? "bad" : null;
+  }
+  var busy = false;
+  async function ask() {
+    if (busy) { return; }
+    busy = true;
+    rf.disabled = true;
+    rf.classList.add("spin");
+    say("wait", "회사 PC 에 목록을 묻는 중…");
+    if (!cur) { state("load"); }
+    try {
+      var k = await getKeys(), t = Math.floor(Date.now() / 1000);
+      var nonce = ("0000000" + t.toString(16)).slice(-8) + hex(crypto.getRandomValues(new Uint8Array(4)));
+      var tag = hex(await sg(k[0], enc.encode("list:" + nonce))).slice(0, 32);
+      var r = await fetch(srv + "/" + link.t + "-r", { method: "POST", body: "list " + nonce + " " + tag });
+      if (!r.ok) { throw new Error("ntfy " + r.status); }
+      var d = await wait(nonce);
+      if (!d) {
+        say("bad", "30초 안에 답이 없습니다 — 회사 PC 의 허가 관리가 꺼져 있거나, PC 에서 [연결 바꾸기] 를 했으면 새 QR 을 비추세요.");
+        state(cur ? "shown" : "nopc");
+      } else if (d === "bad") {
+        say("bad", "받은 목록의 확인값이 맞지 않습니다 — 풀지 않았습니다. 다시 [새로 고침] 을 누르고, 또 그러면 PC 에서 새 QR 을 비추세요.");
+        state(cur ? "shown" : "err");
+      } else if (d.err) {
+        say("bad", "회사 PC 가 목록을 읽지 못했습니다: " + d.err);
+        state(cur ? "shown" : "err");
+      } else {
+        cur = d;
+        lsSet(LS_LIST, JSON.stringify({ t: link.t, d: d }));
+        render(d, false);
+        say("", "");
+        state("shown");
+      }
+    } catch (e) {
+      say("bad", "목록을 받지 못했습니다 (" + ((e && e.message) || e) + ") — 인터넷을 확인하고 [새로 고침] 을 누르세요.");
+      state(cur ? "shown" : "err");
+    } finally {
+      if (!cur) { $("sum").textContent = ""; $("sum").appendChild(pill("아직 받은 목록이 없습니다", "dim")); }
+      busy = false;
+      rf.classList.remove("spin");
+      setTimeout(function () { rf.disabled = false; }, 3000);      // PC 는 3초에 한 번까지 보냄
+    }
+  }
+  rf.addEventListener("click", ask);
+  $("forget").addEventListener("click", function () {
+    if (!confirm("이 휴대폰에서 연결을 지울까요?\n다시 보려면 PC 의 QR 을 다시 비춥니다.")) { return; }
+    lsDel(LS_LINK); lsDel(LS_LIST); lsDel(LS_FOLD);
+    location.replace(location.pathname);
+  });
+  try {                                                  // 지난 목록을 먼저 보여 주고 새로 받음
+    var old = JSON.parse(lsGet(LS_LIST) || "null");
+    if (old && old.t === link.t && old.d && old.d.v === 1) { cur = old.d; render(cur, true); state("shown"); }
+  } catch (e) { cur = null; }
+  ask();
+})();
+</script>
+</body>
+</html>
