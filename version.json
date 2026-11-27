@@ -1,7 +1,7 @@
 {
   "note": "외부판 가장 새 판 번호와 설치 파일 주소. 새 판을 올릴 때 version · size · sha256 을 바꾸고, 설치 파일을 저장소에 올립니다 (size · sha256 은 0.10.52 부터 받은 파일을 확인하는 데 씀 — 옛 판은 무시).",
-  "version": "0.10.74",
+  "version": "0.10.75",
   "url": "https://github.com/opergood/mapproof/raw/main/GeoFix_setup_latest.exe",
-  "size": 9819447,
-  "sha256": "ce62796df550618f01a441db6ddf0c6d129fc35a310ab4b142054bd5fbc49c2d"
+  "size": 9876876,
+  "sha256": "dea78029da5bd4dd65c4641db947629527b5b49c72c220c761655b1dc8c93024"
 }
